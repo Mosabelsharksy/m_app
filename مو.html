@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Student Pro Max | WhatsApp Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg: #0f0c29; --card: rgba(255,255,255,0.1); --text: #fff;
+            --primary: #8a2be2; --success: #00ff87; --danger: #ff5e62;
+            --info: #00d4ff; --warning: #ffb100; --gold: #ffd700; --whatsapp: #25d366;
+        }
+        body.light-mode { --bg: #f0f2f5; --card: #ffffff; --text: #1a1a1a; --primary: #6200ea; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; transition: 0.3s; padding-bottom: 80px; }
+       
+        .nav { padding: 15px; background: var(--card); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.2); position: sticky; top: 0; z-index: 1000; }
+        .container { width: 95%; max-width: 850px; margin: auto; padding-top: 15px; }
+        .glass-box { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(128,128,128,0.2); }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 15px; text-align: center; border: 1px solid rgba(128,128,128,0.2); cursor: pointer; }
+        
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border-radius: 10px; border: 1px solid rgba(128,128,128,0.3); background: rgba(0,0,0,0.05); color: var(--text); outline: none; appearance: none; }
+        select option { background: #1a1a1a; color: #fff; }
+        body.light-mode select option { background: #fff; color: #000; }
+        
+        .btn { border: none; padding: 10px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+        .btn-primary { background: var(--primary); width: 100%; height: 50px; font-size: 16px; margin-top: 10px; }
+       
+        .table-wrapper { overflow-x: auto; border-radius: 15px; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; background: var(--card); min-width: 650px; }
+        th, td { padding: 12px; border-bottom: 1px solid rgba(128,128,128,0.1); text-align: center; }
+        .phone-link { color: var(--info); text-decoration: none; font-size: 11px; display: block; margin-top: 4px; }
+        .small-date { font-size: 10px; opacity: 0.8; display: block; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; padding: 15px; }
+        .modal-content { background: var(--bg); padding: 25px; border-radius: 25px; width: 100%; max-width: 480px; border: 1px solid var(--primary); max-height: 90vh; overflow-y: auto; text-align: right; }
+        .log-item { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px; background: rgba(0,0,0,0.1); margin-bottom: 8px; border-radius: 10px; }
+       
+        .honor-section { background: linear-gradient(45deg, rgba(138,43,226,0.1), rgba(0,212,255,0.1)); border: 2px solid var(--gold); }
+        .honor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+        .honor-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 15px; text-align: center; border: 1px solid rgba(255,215,0,0.2); cursor: pointer; }
+        .tab-btn { flex: 1; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--primary); color: #fff; cursor: pointer; }
+        .tab-btn.active { background: var(--primary); }
+
+        .hw-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .hw-btn { height: 45px; font-size: 14px; }
+        
+        .wa-btn-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        /* شاشة الدخول الاحترافية */
+#loginOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, #1e1e2f 0%, #0f0f1a 100%);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 9999; transition: 0.5s;
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 40px; border-radius: 20px;
+    width: 350px; text-align: center;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+}
+
+.login-card h2 { color: #fff; margin-bottom: 25px; font-weight: 300; }
+
+.login-card input {
+    width: 100%; padding: 12px; margin-bottom: 20px;
+    border-radius: 10px; border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff; outline: none;
+}
+
+.login-card button {
+    width: 100%; padding: 12px; border-radius: 10px;
+    border: none; background: #4e73df; color: white;
+    font-weight: bold; cursor: pointer; transition: 0.3s;
+}
+
+.login-card button:hover { background: #224abe; }
+        
+    </style>
+</head>
+<body id="bodyTag">
+    <div id="loginOverlay">
+    <div class="login-card">
+        <h2>تسجيل الدخول</h2>
+        <input type="text" id="adminUser" placeholder="اسم المستخدم">
+        <input type="password" id="adminPass" placeholder="كلمة المرور">
+        <button onclick="handleLogin()">دخول</button>
+        <p id="loginError" style="color: #ff5e5e; display: none; margin-top: 15px;">البيانات غير صحيحة!</p>
+    </div>
+</div>
+    <div class="nav">
+        <h2>STUDENT PRO MAX</h2>
+        <div style="display:flex; gap:8px;">
+            <button onclick="toggleDarkMode()" class="btn" style="background:#555; width:45px;" id="themeBtn">🌙</button>
+            <button onclick="openScanner()" class="btn" style="background:var(--primary)">📸 سكانر</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card"> <h3 id="statTotal">0</h3> <p>إجمالي الطلاب</p> </div>
+            <div class="stat-card" onclick="showPaidList()"> <h3 id="statPaid" style="color:var(--success)">0</h3> <p>الدافعين 💰</p> </div>
+        </div>
+
+        <div class="glass-box">
+            <input type="text" id="name" placeholder="اسم الطالب بالكامل">
+            <input type="text" id="center" placeholder="السنتر / المجموعة">
+            <select id="year">
+                <option value="الصف الأول الثانوي">أولى ثانوي</option>
+                <option value="الصف الثاني الثانوي">تانية ثانوي</option>
+                <option value="الصف الثالث الثانوي">تالتة ثانوي</option>
+            </select>
+            <div style="display:flex; gap:5px;">
+                <input type="tel" id="sPhone" placeholder="رقم الموبايل">
+                <input type="tel" id="pPhone" placeholder="رقم ولي الأمر">
+            </div>
+            <button class="btn btn-primary" id="mainBtn" onclick="addStudent()">✨ إضافة الطالب</button>
+        </div>
+        
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px; margin-bottom:15px;">
+            <input type="text" id="sN" oninput="draw()" placeholder="🔍 الاسم...">
+            <input type="text" id="sC" oninput="draw()" placeholder="📍 السنتر">
+            <select id="sY" oninput="draw()">
+                <option value="">كل السنين</option>
+                <option value="الصف الأول الثانوي">1 ثانوى</option>
+                <option value="الصف الثاني الثانوي">2 ثانوى</option>
+                <option value="الصف الثالث الثانوي">3 ثانوى</option>
+            </select>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>بيانات الطالب</th>
+                        <th>حالة الدفع</th>
+                        <th>التواريخ</th>
+                        <th>إدارة</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+
+        <div class="glass-box honor-section">
+            <h2 style="text-align:center; color:var(--gold); margin-bottom:15px;">🏆 لوحة الشرف 🏆</h2>
+            <div class="honor-tabs" style="display:flex; gap:5px; margin-bottom:15px;">
+                <button class="tab-btn active" onclick="changeHonorYear('الصف الأول الثانوي', this)">1 ثانوى</button>
+                <button class="tab-btn" onclick="changeHonorYear('الصف الثاني الثانوي', this)">2 ثانوى</button>
+                <button class="tab-btn" onclick="changeHonorYear('الصف الثالث الثانوي', this)">3 ثانوى</button>
+            </div>
+            <div class="honor-grid" id="honorGrid"></div>
+        </div>
+    </div>
+
+    <div id="genericModal" class="modal"><div class="modal-content" id="modalBody"></div></div>
+    <div id="scannerModal" class="modal"><div class="modal-content">
+        <div id="reader"></div>
+        <button class="btn btn-primary" style="background:var(--danger); margin-top:15px" onclick="closeScanner()">إغلاق</button>
+    </div></div>
+
+    <script>
+        // 1. إعدادات الفايربيز (الكونفيج بتاعك)
+const firebaseConfig = {
+    apiKey: "AIzaSyCqSLhx1LNn26NFxuwQBsgunMQqB7SdxbA",
+    authDomain: "elsharksy-student.firebaseapp.com",
+    projectId: "elsharksy-student",
+    storageBucket: "elsharksy-student.firebasestorage.app",
+    messagingSenderId: "191922327007",
+    appId: "1:191922327007:web:217910e28d5870810e086a",
+    measurementId: "G-QEFEF1KJXD"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 2. دالة تسجيل الدخول
+function handleLogin() {
+    const user = document.getElementById('adminUser').value;
+    const pass = document.getElementById('adminPass').value;
+    
+    if(user === "admin" && pass === "123") { // غيرهم براحتك
+        localStorage.setItem('sessionActive', 'true');
+        launchApp();
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
+}
+
+// 3. دالة فتح التطبيق وسحب الداتا
+async function launchApp() {
+    document.getElementById('loginOverlay').style.display = 'none';
+    
+    // سحب الداتا من الفايربيز
+    try {
+        const doc = await db.collection('settings').doc('mainData').get();
+        if (doc.exists) {
+            students = doc.data().students || [];
+            if(typeof draw === 'function') draw(); // لو عندك فنكشن اسمها draw هيرسم الجدول
+        }
+    } catch (e) { console.log("خطأ في جلب البيانات"); }
+}
+
+// 4. التأكد من الجلسة عند الريفرش
+window.addEventListener('DOMContentLoaded', () => {
+    if(localStorage.getItem('sessionActive') === 'true') {
+        launchApp();
+    }
+});
+        let students = localStorage.getItem('pro_v_ultimate') ? JSON.parse(localStorage.getItem('pro_v_ultimate')) : [];
+        let editIdx = -1;
+        let html5QrCode;
+        let currentHonorYear = 'الصف الأول الثانوي';
+
+        function save() { localStorage.setItem('pro_v_ultimate', JSON.stringify(students));  db.collection('settings').doc('mainData').set({ students: students });}
+       
+        function toggleDarkMode() {
+            const isLight = document.getElementById('bodyTag').classList.toggle('light-mode');
+            localStorage.setItem('theme_mode', isLight ? 'light' : 'dark');
+            document.getElementById('themeBtn').innerText = isLight ? '☀️' : '🌙';
+        }
+
+        (function loadTheme() {
+            const savedTheme = localStorage.getItem('theme_mode');
+            if(savedTheme === 'light') { document.getElementById('bodyTag').classList.add('light-mode'); document.getElementById('themeBtn').innerText = '☀️'; }
+        })();
+
+        function addStudent() {
+            let n = document.getElementById('name').value;
+            let y = document.getElementById('year').value;
+            if(!n) return alert("الاسم مطلوب!");
+            if(editIdx === -1) {
+                students.push({
+                    id: "ST-"+Date.now(), name: n, center: document.getElementById('center').value, year: y,
+                    sPhone: document.getElementById('sPhone').value, pPhone: document.getElementById('pPhone').value,
+                    payment: false, payDate: null, payTimestamp: null, regDate: new Date().toLocaleDateString('ar-EG'),
+                    attendance: [], exams: [], homeworks: []
+                });
+            } else {
+                let s = students[editIdx];
+                s.name = n; s.center = document.getElementById('center').value; s.year = y;
+                s.sPhone = document.getElementById('sPhone').value; s.pPhone = document.getElementById('pPhone').value;
+                editIdx = -1; document.getElementById('mainBtn').innerText = "✨ إضافة الطالب";
+            }
+            save(); draw(); clearInputs();
+        }
+
+        function draw() {
+            const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+            const nowTime = Date.now();
+            let nT = document.getElementById('sN').value.toLowerCase();
+            let cT = document.getElementById('sC').value.toLowerCase();
+            let yT = document.getElementById('sY').value;
+            let html = '';
+
+            students.forEach((s, i) => {
+                if(s.payment && s.payTimestamp && (nowTime - s.payTimestamp > thirtyDays)) {
+                    s.payment = false; s.payDate = null; s.payTimestamp = null; save();
+                }
+
+                if(s.name.toLowerCase().includes(nT) && s.center.toLowerCase().includes(cT) && (yT === "" || s.year === yT)) {
+                    html += `<tr>
+                        <td style="text-align:right">
+                            <b>${s.name}</b><br>
+                            <span style="font-size:10px; color:var(--primary)">🎓 ${s.year} | 📍 ${s.center}</span>
+                            <a class="phone-link" href="tel:${s.sPhone}">📱 الطالب: ${s.sPhone}</a>
+                            <a class="phone-link" href="tel:${s.pPhone}" style="color:var(--warning)">👨‍👩‍👦 ولي الأمر: ${s.pPhone}</a>
+                        </td>
+                        <td><button class="btn" style="background:${s.payment?'var(--success)':'#444'}" onclick="handlePay(${i})">${s.payment?'✅ دافع':'💰 ادفع'}</button></td>
+                        <td>
+                            <span class="small-date">📅 تسجيل: ${s.regDate}</span>
+                            <span class="small-date" style="color:var(--success)">💳 دفع: ${s.payDate || '---'}</span>
+                        </td>
+                        <td>
+                            <div style="display:flex; gap:4px; justify-content:center;">
+                                <button class="btn" style="background:var(--whatsapp)" onclick="showWhatsAppOptions(${i})">📱</button>
+                                <button class="btn" style="background:var(--primary)" onclick="showAcademic(${i})">📝</button>
+                                <button class="btn" style="background:var(--info)" onclick="prepareQR(${i})">QR</button>
+                                <button class="btn" style="background:#f39c12" onclick="editStd(${i})">✎</button>
+                                <button class="btn" style="background:var(--danger)" onclick="del(${i})">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
+            });
+            document.getElementById('tbody').innerHTML = html;
+            document.getElementById('statTotal').innerText = students.length;
+            document.getElementById('statPaid').innerText = students.filter(x=>x.payment).length;
+            drawHonor(currentHonorYear);
+        }
+
+        function calculatePoints(s) {
+            let attP = s.attendance.length * 10;
+            let hwP = s.homeworks.reduce((acc, h) => {
+                if(h.rank === 'ممتاز') return acc + 20;
+                if(h.rank === 'جيد جداً') return acc + 15;
+                if(h.rank === 'جيد') return acc + 10;
+                return acc + 5;
+            }, 0);
+            let exAvg = s.exams.length > 0 ? (s.exams.reduce((acc, e) => acc + (e.score/e.total), 0) / s.exams.length) * 100 : 0;
+            return { total: (attP + hwP + exAvg).toFixed(1), attP, hwP, exAvg: exAvg.toFixed(1) };
+        }
+
+        function drawHonor(year) {
+            let filtered = students.map((s, idx) => ({...s, realIdx: idx}))
+                .filter(s => s.year === year)
+                .map(s => {
+                    let p = calculatePoints(s);
+                    return { name: s.name, points: p.total, realIdx: s.realIdx };
+                }).sort((a, b) => b.points - a.points);
+
+            let html = '';
+            filtered.forEach((s, idx) => {
+                let color = idx === 0 ? 'var(--gold)' : (idx === 1 ? '#C0C0C0' : (idx === 2 ? '#CD7F32' : 'rgba(255,255,255,0.3)'));
+                html += `<div class="honor-card" style="border-color:${color}" onclick="showPointsDetail(${s.realIdx})">
+                    <div style="font-size:12px; font-weight:bold">${idx + 1}. ${s.name}</div>
+                    <div style="color:var(--success); font-size:11px;">${s.points} نقطة</div>
+                </div>`;
+            });
+            document.getElementById('honorGrid').innerHTML = html || '<p style="padding:10px; opacity:0.5">لا يوجد طلاب</p>';
+        }
+
+        function showPointsDetail(i) {
+            let s = students[i]; let p = calculatePoints(s);
+            document.getElementById('modalBody').innerHTML = `
+                <h3 style="text-align:center; color:var(--gold);">🏆 كارت التفوق 🏆</h3>
+                <h2 style="text-align:center; margin:10px 0;">${s.name}</h2>
+                <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:15px; border-left:5px solid var(--gold);">
+                    <p style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>📅 نقاط الحضور:</span> <b>${p.attP}</b></p>
+                    <p style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>📚 نقاط الواجب:</span> <b>${p.hwP}</b></p>
+                    <p style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>✍️ متوسط الامتحانات:</span> <b>${p.exAvg}</b></p>
+                    <hr style="opacity:0.1; margin:10px 0;">
+                    <p style="display:flex; justify-content:space-between; font-size:1.2rem; color:var(--success)"><span>المجموع:</span> <b>${p.total}</b></p>
+                </div>
+                <button class="btn btn-primary" style="margin-top:20px" onclick="closeModal()">إغلاق</button>
+            `;
+            document.getElementById('genericModal').style.display = 'flex';
+        }
+
+        // --- ميزة الواتساب الجديدة ---
+        function showWhatsAppOptions(i) {
+            let s = students[i];
+            document.getElementById('modalBody').innerHTML = `
+                <h3>📱 تقارير الواتساب: ${s.name}</h3>
+                <p style="font-size:13px; margin:10px 0; opacity:0.8">اختر نوع الرسالة المراد إرسالها لولي الأمر:</p>
+                <div class="wa-btn-options">
+                    <button class="btn" style="background:var(--success)" onclick="sendWAReport(${i}, 'attendance')">✅ تقرير حضور</button>
+                    <button class="btn" style="background:var(--danger)" onclick="sendWAReport(${i}, 'absent')">❌ إبلاغ غياب</button>
+                </div>
+                <button class="btn btn-primary" style="background:#555; margin-top:15px" onclick="closeModal()">إغلاق</button>
+            `;
+            document.getElementById('genericModal').style.display = 'flex';
+        }
+
+        function sendWAReport(i, type) {
+            let s = students[i];
+            let today = new Date().toLocaleDateString('ar-EG');
+            let msg = "";
+
+            if (type === 'absent') {
+                msg = `السلام عليكم يا فندم.. بنحيط سيادتكم علماً بأن الطالب/ *${s.name}* قد تغيب عن حصة اليوم الموافق *${today}*. نرجو المتابعة والاهتمام.`;
+            } else {
+                // البحث عن بيانات اليوم (واجب أو امتحان)
+                let todayHW = s.homeworks.find(h => h.date === today);
+                let todayEX = s.exams.find(e => e.date === today);
+                
+                msg = `السلام عليكم يا فندم.. تقرير الطالب/ *${s.name}* ليوم *${today}*:\n\n`;
+                msg += `✅ الحضور: *تم الحضور*\n`;
+                msg += `📚 تقييم الواجب: *${todayHW ? todayHW.rank : 'لم يتم التقييم بعد'}*\n`;
+                if(todayEX) msg += `📝 درجة امتحان اليوم: *${todayEX.score} من ${todayEX.total}*\n`;
+                msg += `\nشكراً لمتابعتكم المستمرة 🚀`;
+            }
+
+            let phone = s.pPhone.startsWith('0') ? '2' + s.pPhone : s.pPhone;
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function sendQRWhatsApp(i) {
+            let s = students[i];
+            let msg = `أهلاً يا *${s.name}*.. ده كود الدخول الخاص بك في السنتر:\n🆔 الكود: *${s.id}*\n\nيرجى الحفاظ على هذا الكود وإظهاره للسكرتارية عند الدخول.`;
+            let phone = s.sPhone.startsWith('0') ? '2' + s.sPhone : s.sPhone;
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function changeHonorYear(year, btn) {
+            currentHonorYear = year;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            drawHonor(year);
+        }
+
+        function showAcademic(i) {
+            let s = students[i];
+            let hwLog = s.homeworks.map(h => `<div class="log-item">📚 واجب: <b>${h.rank}</b> <small style="float:left">${h.date}</small></div>`).reverse().join('');
+            let exLog = s.exams.map(e => `<div class="log-item">✍️ ${e.title}: <b>${e.score}/${e.total}</b> <small style="float:left">${e.date}</small></div>`).reverse().join('');
+            let attLog = s.attendance.map(a => `<div class="log-item" style="border-right:3px solid var(--info)">📅 حضور: <b>${a}</b></div>`).reverse().join('');
+            
+            document.getElementById('modalBody').innerHTML = `
+                <h3>سجل: ${s.name}</h3>
+                <div class="glass-box" style="padding:10px; margin:10px 0;">
+                    <h4 style="margin-bottom:8px;">📝 تقييم الواجب الجديد</h4>
+                    <div class="hw-btn-grid">
+                        <button class="btn hw-btn" style="background:var(--success); color:#000" onclick="addHW(${i},'ممتاز')">ممتاز</button>
+                        <button class="btn hw-btn" style="background:var(--warning); color:#000" onclick="addHW(${i},'جيد جداً')">جيد جداً</button>
+                        <button class="btn hw-btn" style="background:#c0c0c0; color:#000" onclick="addHW(${i},'جيد')">جيد</button>
+                        <button class="btn hw-btn" style="background:#cd7f32" onclick="addHW(${i},'مقبول')">مقبول</button>
+                    </div>
+                </div>
+                <div class="glass-box" style="padding:10px; margin:10px 0;">
+                    <input id="exT" placeholder="اسم الامتحان">
+                    <div style="display:flex; gap:5px;"><input id="exS" type="number" placeholder="درجته"><input id="exM" type="number" placeholder="من"></div>
+                    <button class="btn btn-primary" style="height:35px; margin-top:5px" onclick="addEx(${i})">حفظ الامتحان</button>
+                </div>
+                <div style="max-height:250px; overflow-y:auto; border-top:1px solid #555; padding-top:10px;">
+                    <h4 style="color:var(--info); margin-bottom:10px;">📅 سجل الحضور:</h4>
+                    ${attLog || '<p style="font-size:12px; opacity:0.5">لا يوجد غياب/حضور مسجل</p>'}
+                    <h4 style="color:var(--warning); margin:15px 0 10px 0;">📝 سجل التقييمات:</h4>
+                    ${hwLog} ${exLog}
+                </div>
+                <button class="btn btn-primary" style="background:var(--danger); margin-top:10px" onclick="closeModal()">إغلاق السجل</button>
+            `;
+            document.getElementById('genericModal').style.display = 'flex';
+        }
+
+        function handlePay(i) {
+            let s = students[i];
+            if(!s.payment) {
+                if(confirm(`تأكيد دفع ${s.name}؟`)) { s.payment = true; s.payDate = new Date().toLocaleDateString('ar-EG'); s.payTimestamp = Date.now(); }
+            } else { if(confirm("إلغاء الدفع؟")) { s.payment = false; s.payDate = null; s.payTimestamp = null; } }
+            save(); draw();
+        }
+
+        function addHW(i, r) { students[i].homeworks.push({ rank: r, date: new Date().toLocaleDateString('ar-EG') }); save(); showAcademic(i); draw(); }
+        function addEx(i) {
+            let t = document.getElementById('exT').value, s = document.getElementById('exS').value, m = document.getElementById('exM').value;
+            if(!t || !s || !m) return alert("اكمل البيانات");
+            students[i].exams.push({ title: t, score: s, total: m, date: new Date().toLocaleDateString('ar-EG') });
+            save(); showAcademic(i); draw();
+        }
+
+        function openScanner() {
+            document.getElementById('scannerModal').style.display = 'flex';
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (txt) => {
+                let s = students.find(x => x.id === txt);
+                if(s) { s.attendance.push(new Date().toLocaleString('ar-EG')); save(); alert("✅ حضر: " + s.name); closeScanner(); draw(); }
+            }).catch(e => console.log(e));
+        }
+        function closeScanner() { if(html5QrCode) html5QrCode.stop().then(()=>document.getElementById('scannerModal').style.display='none'); }
+
+        function prepareQR(i) {
+            let s = students[i];
+            document.getElementById('modalBody').innerHTML = `
+                <h3>كود: ${s.name}</h3>
+                <div id="qArea" style="background:white; padding:15px; margin:15px auto; display:inline-block; border-radius:10px;"></div><br>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <button class="btn btn-primary" onclick="downloadQR('${s.name}')">⬇️ تحميل</button>
+                    <button class="btn" style="background:var(--whatsapp)" onclick="sendQRWhatsApp(${i})">📱 واتساب</button>
+                </div>
+                <button class="btn" style="background:var(--danger); margin-top:10px; width:100%" onclick="closeModal()">إغلاق</button>
+            `;
+            document.getElementById('genericModal').style.display = 'flex';
+            new QRCode(document.getElementById("qArea"), { text: s.id, width: 200, height: 200 });
+        }
+        function downloadQR(name) { let c = document.querySelector("#qArea canvas"); let l = document.createElement('a'); l.download = `QR-${name}.png`; l.href = c.toDataURL(); l.click(); }
+
+        function showPaidList() {
+            let pH = '<h3>✅ دافعين</h3>', uH = '<hr style="margin:20px 0; opacity:0.2"><h3>❌ غير دافعين</h3>';
+            students.forEach(s => { let item = `<div class="log-item"><b>${s.name}</b><br><small>${s.year}</small></div>`; if(s.payment) pH += item; else uH += item; });
+            document.getElementById('modalBody').innerHTML = pH + uH + `<button class="btn btn-primary" onclick="closeModal()">إغلاق</button>`;
+            document.getElementById('genericModal').style.display = 'flex';
+        }
+
+        function editStd(i) {
+            let s = students[i]; ['name','center','sPhone','pPhone','year'].forEach(id => document.getElementById(id).value = s[id]);
+            editIdx = i; document.getElementById('mainBtn').innerText = "✅ تحديث البيانات"; window.scrollTo(0,0);
+        }
+        function del(i) { if(confirm("حذف الطالب؟")) { students.splice(i,1); save(); draw(); } }
+        function closeModal() { document.getElementById('genericModal').style.display = 'none'; }
+        function clearInputs() { ['name','center','sPhone','pPhone'].forEach(id=>document.getElementById(id).value=''); }
+       
+        draw();
+    </script>
+</body>
+</html>
